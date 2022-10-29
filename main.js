@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron')
 const fs = require('node:fs')
 const path = require('node:path')
 const util = require('./libs/util')
+const weixin = require('./libs/weixin')
 
 const createWindow = () => {
   const win = new BrowserWindow({
@@ -63,33 +64,55 @@ ipcMain.handle('creatCode', async (event, data)=> {
     dialog.showMessageBoxSync({
       message: '目录不存在',
       type: 'error',
-
     })
   }
 
-  const folderCopy = folder + '_COPY'
-  util.copyDir(folder, folderCopy)
+  // 生成新的代码
+  const folderCopy = folder + '_BAK'
+  if (!util.isDirExist(folderCopy)) {
+    fs.mkdirSync(folderCopy)
+  } else {
+    util.deleteFile(folderCopy, () => { fs.mkdirSync(folderCopy) })
+  }
 
-  const file = await util.readFile(folder)
-  console.log(file)
-  // 完整目录
-  // 'app.js',
-  // 'app.json',
-  // 'app.wxss',
-  // 'components',
-  // 'images',
-  // 'miniprogram_npm',
-  // 'node_modules',
-  // 'package-lock.json',
-  // 'package.json',
-  // 'pages',
-  // 'project.config.json',
-  // 'project.private.config.json',
-  // 'sitemap.json',
-  // 'subpages',
-  // 'templates',
-  // 'utils',
-  // 'vendor',
-  // 'yarn.lock'
-  const miniapp = ['app.json', 'app.wxss', 'components', 'pages', 'subpages', 'templates']
+  const codeRes = weixin.creatCode(folder, folderCopy, data)
+  if (codeRes !== 'success') {
+    return '生成失败，请重试'
+  }
+
+  // 保存到新的目录
+  const saveRes = dialog.showSaveDialogSync({
+    title: '保存文件',
+    properties: ["createDirectory"],
+    // defaultPath: folderCopy
+  })
+  console.log(saveRes)
+  if (saveRes === undefined) {
+    return 'cancel'
+  } else {
+    const copyRes = util.copyDir(folderCopy, saveRes)
+    if (copyRes) {
+      // 删掉源文件
+      util.deleteFile(folderCopy)
+      return 'success'
+    } else {
+      return 'error'
+    }
+  }
+
+  // .then(r => {
+  //   console.log(r)
+  //   if (r && r.canceled) {
+  //     return 'cancel'
+  //   }
+  //   const copyRes = util.copyDir(folderCopy, r.filePath)
+  //   if (copyRes) {
+  //     // 删掉源文件
+  //     util.deleteFile(folderCopy)
+  //     return 'success'
+  //   }
+  // }).catch(err => {
+  //   console.log(err)
+  //   return err
+  // })
 })

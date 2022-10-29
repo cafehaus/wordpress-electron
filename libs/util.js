@@ -1,5 +1,6 @@
 const fs = require('node:fs')
 const path = require('node:path')
+const rimraf = require('rimraf')
 
 /**
  * 读取文件和路径
@@ -48,7 +49,6 @@ function copyDir(sourcePath, targetPath) {
     const newSourcePath = path.resolve(sourcePath, file.name)
     const newTargetPath = path.resolve(targetPath, file.name)
     if (file.isDirectory()) {
-      isDirExist(newTargetPath)
       copyDir(newSourcePath, newTargetPath)
     } else {
       fs.copyFileSync(newSourcePath, newTargetPath)
@@ -57,8 +57,37 @@ function copyDir(sourcePath, targetPath) {
   return true
 }
 
+/**
+  * 删除文件或目录
+  * @param path
+  * @returns {Boolean}
+  */
+ function deleteFile(path, callback) {
+  if (!isDirExist(path)) {
+    if (callback && typeof callback === 'function') {
+      callback()
+    }
+    return true
+  }
+
+  rimraf(path, (err, files) => {
+    // err: 错误信息，如果不存在则为成功
+    // files: 匹配文件数组
+    if (err) {
+      console.log(err)
+      return false
+    }
+
+    if (callback && typeof callback === 'function') {
+      callback()
+    }
+    return true
+  })
+}
+
 module.exports = {
   readFile,
   isDirExist,
   copyDir,
+  deleteFile,
 }
