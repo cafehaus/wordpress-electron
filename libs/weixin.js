@@ -41,6 +41,10 @@ function creatCode(sourcePath, targetPath, config) {
   const configColor = config.color
   const configApi = /^(https:\/\/)/.test(config.api) ? config.api : ('https://' + config.api)
 
+  // 插件
+  const needPoints = config.plugin && config.plugin.includes('100')
+
+
   if (!util.isDirExist(targetPath)) {
     fs.mkdirSync(targetPath)
   }
@@ -48,20 +52,34 @@ function creatCode(sourcePath, targetPath, config) {
   const sourceFile = fs.readdirSync(sourcePath, { withFileTypes: true })
   sourceFile.forEach((file) => {
     const fileName = file.name
-    const fileBaseName = file.basename
-    console.log(fileName, fileBaseName)
     const newSourcePath = path.resolve(sourcePath, fileName)
     const newTargetPath = path.resolve(targetPath, fileName)
 
-    if (file.isDirectory()) {
-      // 目录
+    if (file.isDirectory()) { // 目录
+      // 不需要红包插件
+      if (fileName === 'subpages' && !needPoints) {
+        return
+      }
+
       creatCode(newSourcePath, newTargetPath, config)
     } else {
       // 文件：先处理了在复制写入
       if (fileName === 'app.json') { // 小程序配置
         let appJson = fs.readFileSync(newSourcePath).toString()
-        let newAppJson = appJson.replaceAll(appName, configName).replaceAll(baseColor, configColor)
-        fs.writeFileSync(newTargetPath, newAppJson)
+        let newAppJson = {}
+        try {
+          newAppJson = JSON.parse(appJson)
+        } catch (error) {
+          console.log(error)
+        }
+        // let newAppJson = appJson.replaceAll(appName, configName).replaceAll(baseColor, configColor)
+        newAppJson.window.navigationBarTitleText = configName
+        newAppJson.tabBar.selectedColor = configColor
+
+        if (!needPoints) {
+          delete obj.subpackages
+        }
+        fs.writeFileSync(newTargetPath, JSON.stringify(newAppJson))
       } else if (fileName === 'config.js') { // 配置文件
         let configJs = fs.readFileSync(newSourcePath).toString()
         let newConfigJs = configJs.replaceAll('const getDomain = "blog.minapper.com"', `const getDomain = "${configApi}"`)
